@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Web Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,500;1,300&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0e0e0f;
+    --card: #161618;
+    --inner: #1e1e21;
+    --border: rgba(255,255,255,0.07);
+    --accent: #c8f060;
+    --text: #f0ede8;
+    --muted: #888;
+  }
+
+  body {
+    font-family: 'DM Sans', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+
+  /* subtle grid bg */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+    background-size: 60px 60px;
+    pointer-events: none;
+  }
+
+  /* PAGE 1 */
+  #page1, #page2 {
+    width: 100%;
+    max-width: 900px;
+    padding: 2rem;
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  #page2, #page3 { display: none; opacity: 0; position: absolute; }
+
+  .eyebrow {
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.7rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 1.2rem;
+  }
+
+  h1 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: clamp(2.2rem, 5vw, 3.5rem);
+    line-height: 1.1;
+    margin-bottom: 0.5rem;
+  }
+
+  h1 em {
+    font-style: italic;
+    color: var(--accent);
+  }
+
+  .sub {
+    color: var(--muted);
+    font-size: 0.95rem;
+    margin-bottom: 2.5rem;
+    font-weight: 300;
+  }
+
+  /* Big outer card */
+  .outer-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 1.5rem;
+    display: flex;
+    gap: 1rem;
+  }
+
+  /* Inner option cards */
+  .option {
+    flex: 1;
+    background: var(--inner);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 2.2rem 1.8rem;
+    cursor: pointer;
+    transition: border-color 0.25s, transform 0.25s, background 0.25s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .option::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(200,240,96,0.05), transparent 70%);
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .option:hover { border-color: rgba(200,240,96,0.35); transform: translateY(-3px); }
+  .option:hover::after { opacity: 1; }
+
+  .option-icon {
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: rgba(200,240,96,0.1);
+    border: 1px solid rgba(200,240,96,0.2);
+    display: flex; align-items: center; justify-content: center;
+    margin-bottom: 1.5rem;
+    font-size: 1.3rem;
+  }
+
+  .option h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 500;
+    font-size: 1.4rem;
+    margin-bottom: 0.6rem;
+  }
+
+  .option p {
+    color: var(--muted);
+    font-size: 0.88rem;
+    line-height: 1.6;
+    font-weight: 300;
+  }
+
+  .option-arrow {
+    margin-top: 2rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.82rem;
+    color: var(--accent);
+    opacity: 0;
+    transform: translateX(-6px);
+    transition: opacity 0.25s, transform 0.25s;
+  }
+
+  .option:hover .option-arrow { opacity: 1; transform: translateX(0); }
+
+  /* PAGE 2 & 3 */
+  #page2, #page3 { max-width: 600px; }
+
+  .back-btn {
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.88rem;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-bottom: 2.5rem;
+    transition: color 0.2s;
+  }
+  .back-btn:hover { color: var(--text); }
+
+  .url-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    padding: 2.5rem;
+  }
+
+  .url-card h2 {
+    font-family: 'Fraunces', serif;
+    font-weight: 300;
+    font-size: 1.8rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .url-card .sub { margin-bottom: 2rem; }
+
+  .input-wrap {
+    position: relative;
+    margin-bottom: 1rem;
+  }
+
+  .url-input {
+    width: 100%;
+    background: var(--inner);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .url-input::placeholder { color: var(--muted); }
+  .url-input:focus { border-color: rgba(200,240,96,0.4); }
+
+  .submit-btn {
+    width: 100%;
+    padding: 1rem;
+    border-radius: 12px;
+    border: none;
+    background: var(--accent);
+    color: #0e0e0f;
+    font-family: 'DM Sans', sans-serif;
+    font-weight: 500;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: opacity 0.2s, transform 0.15s;
+    opacity: 0.35;
+    pointer-events: none;
+  }
+
+  .submit-btn.active {
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .submit-btn.active:hover { transform: translateY(-2px); }
+  .submit-btn.active:active { transform: translateY(0); }
+
+  .req-textarea {
+    width: 100%;
+    background: var(--inner);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.2rem;
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 300;
+    line-height: 1.6;
+    outline: none;
+    resize: vertical;
+    min-height: 180px;
+    transition: border-color 0.2s;
+    margin-bottom: 0.6rem;
+  }
+
+  .req-textarea::placeholder { color: var(--muted); }
+  .req-textarea:focus { border-color: rgba(200,240,96,0.4); }
+
+  .char-hint {
+    font-size: 0.78rem;
+    color: var(--muted);
+    text-align: right;
+    margin-bottom: 1rem;
+  }
+
+  @media (max-width: 600px) {
+    .outer-card { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- PAGE 1 -->
+<div id="page1">
+  <p class="eyebrow">Web Studio</p>
+  <h1>What would you like<br>to <em>build</em> today?</h1>
+  <p class="sub">Choose your path to get started.</p>
+
+  <div class="outer-card">
+    <div class="option" onclick="goPage3()">
+      <div class="option-icon">✦</div>
+      <h2>New Website</h2>
+      <p>Start from a blank canvas. We'll guide you through building your site from the ground up.</p>
+      <span class="option-arrow">Get started →</span>
+    </div>
+
+    <div class="option" onclick="goPage2()">
+      <div class="option-icon">⟳</div>
+      <h2>Improve Existing</h2>
+      <p>Already have a site? Share your URL and we'll help take it to the next level.</p>
+      <span class="option-arrow">Continue →</span>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 2 -->
+<div id="page2">
+  <button class="back-btn" onclick="goBack()">← Back</button>
+
+  <div class="url-card">
+    <p class="eyebrow">Improve Existing Site</p>
+    <h2>Share your website</h2>
+    <p class="sub">Paste your current URL and we'll take a look.</p>
+
+    <div class="input-wrap">
+      <input
+        class="url-input"
+        id="urlInput"
+        type="url"
+        placeholder="https://yourwebsite.com"
+        oninput="handleInput(this)"
+      />
+    </div>
+
+    <button class="submit-btn" id="submitBtn">Analyse my website →</button>
+  </div>
+</div>
+
+<!-- PAGE 3 — Start Building -->
+<div id="page3">
+  <button class="back-btn" onclick="goBack()">← Back</button>
+
+  <div class="url-card">
+    <p class="eyebrow">New Website</p>
+    <h2>Tell us about your site</h2>
+    <p class="sub">Describe your requirements, goals, and any details we should know.</p>
+
+    <div class="input-wrap">
+      <textarea
+        class="req-textarea"
+        id="reqInput"
+        placeholder="e.g. A portfolio site for a freelance photographer. Needs a gallery, contact form, and a clean minimal look. Colour palette: dark background with warm tones…"
+        oninput="handleReqInput(this)"
+      ></textarea>
+      <p class="char-hint" id="charHint">0 characters</p>
+    </div>
+
+    <button class="submit-btn" id="buildBtn">Start building →</button>
+  </div>
+</div>
+
+<script>
+  const page1 = document.getElementById('page1');
+  const page2 = document.getElementById('page2');
+  const page3 = document.getElementById('page3');
+
+  let activePage = null;
+
+  function showPage(target) {
+    page1.style.opacity = '0';
+    page1.style.transform = 'translateY(-20px)';
+    activePage = target;
+    setTimeout(() => {
+      page1.style.display = 'none';
+      target.style.display = 'block';
+      requestAnimationFrame(() => {
+        target.style.opacity = '1';
+        target.style.transform = 'translateY(0)';
+        target.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+      });
+    }, 350);
+  }
+
+  function goPage2() { showPage(page2); }
+  function goPage3() { showPage(page3); }
+
+  function goBack() {
+    const current = activePage;
+    current.style.opacity = '0';
+    current.style.transform = 'translateY(20px)';
+    setTimeout(() => {
+      current.style.display = 'none';
+      page1.style.display = 'block';
+      page1.style.transform = 'translateY(0)';
+      requestAnimationFrame(() => {
+        page1.style.opacity = '1';
+        page1.style.transition = 'opacity 0.4s ease, transform 0.4s ease';
+      });
+    }, 350);
+  }
+
+  function handleInput(input) {
+    const btn = document.getElementById('submitBtn');
+    const val = input.value.trim();
+    if (val.length > 3) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  }
+
+  function handleReqInput(textarea) {
+    const val = textarea.value.trim();
+    document.getElementById('charHint').textContent = textarea.value.length + ' characters';
+    const btn = document.getElementById('buildBtn');
+    if (val.length > 10) {
+      btn.classList.add('active');
+    } else {
+      btn.classList.remove('active');
+    }
+  }
+</script>
+</body>
+</html>

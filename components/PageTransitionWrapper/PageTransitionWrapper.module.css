@@ -1,0 +1,15 @@
+.wrapper {
+  width: 100%;
+  padding: 2rem;
+  opacity: 0;
+  transform: translateY(20px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+.wrapper.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.wide   { max-width: 900px; }
+.narrow { max-width: 600px; }

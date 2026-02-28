@@ -1,0 +1,55 @@
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 2.5rem;
+}
+
+.eyebrow {
+  font-family: var(--font-dm-sans), sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1.2rem;
+}
+
+.heading {
+  font-family: var(--font-fraunces), serif;
+  font-weight: 300;
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.sub {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin-bottom: 2rem;
+  font-weight: 300;
+}
+
+.inputWrap {
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.urlInput {
+  width: 100%;
+  background: var(--inner);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1rem 1.2rem;
+  color: var(--text);
+  font-family: var(--font-dm-sans), sans-serif;
+  font-size: 0.95rem;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.urlInput::placeholder {
+  color: var(--muted);
+}
+
+.urlInput:focus {
+  border-color: rgba(200, 240, 96, 0.4);
+}

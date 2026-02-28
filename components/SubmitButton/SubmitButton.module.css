@@ -1,0 +1,27 @@
+.btn {
+  width: 100%;
+  padding: 1rem;
+  border-radius: 12px;
+  border: none;
+  background: var(--accent);
+  color: #0e0e0f;
+  font-family: var(--font-dm-sans), sans-serif;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: not-allowed;
+  transition: opacity 0.2s, transform 0.15s;
+  opacity: 0.35;
+}
+
+.btn.active {
+  opacity: 1;
+  cursor: pointer;
+}
+
+.btn.active:hover {
+  transform: translateY(-2px);
+}
+
+.btn.active:active {
+  transform: translateY(0);
+}

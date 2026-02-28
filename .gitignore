@@ -32,3 +32,6 @@ Thumbs.db
 # misc
 *.pem
 *.log
+
+# temporary website build sessions
+/temp/ditto-build-*/

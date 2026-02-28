@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(node --version)",
-      "Bash(echo $PATH)"
+      "Bash(echo $PATH)",
+      "Bash(claude --version)"
     ]
   }
 }

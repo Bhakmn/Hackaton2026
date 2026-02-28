@@ -5,7 +5,6 @@ import OptionCard from '@/components/OptionCard/OptionCard'
 export default function HomePage() {
   return (
     <PageTransitionWrapper maxWidth="wide">
-      <p className={styles.eyebrow}>Web Studio</p>
       <h1 className={styles.heading}>
         What would you like<br />to <em>build</em> today?
       </h1>

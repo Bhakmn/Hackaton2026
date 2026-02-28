@@ -3,6 +3,9 @@
   border: 1px solid var(--border);
   border-radius: 24px;
   padding: 2.5rem;
+  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.65),
+              inset 0 1px 0 rgba(56, 184, 208, 0.12),
+              0 0 60px rgba(8, 80, 160, 0.22);
 }
 
 .eyebrow {
@@ -51,5 +54,5 @@
 }
 
 .urlInput:focus {
-  border-color: rgba(200, 240, 96, 0.4);
+  border-color: rgba(56, 184, 208, 0.45);
 }

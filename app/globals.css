@@ -5,13 +5,13 @@
 }
 
 :root {
-  --bg: #0e0e0f;
-  --card: #161618;
-  --inner: #1e1e21;
-  --border: rgba(255, 255, 255, 0.07);
-  --accent: #c8f060;
-  --text: #f0ede8;
-  --muted: #888;
+  --bg: #050d1a;
+  --card: #0a1830;
+  --inner: #102040;
+  --border: rgba(56, 184, 208, 0.18);
+  --accent: #38b8d0;
+  --text: #d8f0f5;
+  --muted: #5a8898;
 }
 
 body {
@@ -25,14 +25,48 @@ body {
   overflow: hidden;
 }
 
-/* Subtle grid background */
-body::before {
+/* Fixed corner logo */
+.site-logo {
+  position: fixed;
+  top: 1rem;
+  right: 1.2rem;
+  height: 240px;
+  width: auto;
+  z-index: 2;
+  filter: drop-shadow(0 0 20px rgba(56, 184, 208, 0.45));
+}
+
+/* Falling stars */
+@keyframes starFly {
+  0%   { translate: 0 0;                   opacity: 0; }
+  8%   { opacity: 1; }
+  90%  { opacity: 0.8; }
+  100% { translate: calc(100vw + 250px) 0; opacity: 0; }
+}
+
+/* Tech dot-grid — echoes logo's data-visualization background */
+body::after {
   content: '';
   position: fixed;
   inset: 0;
   background-image:
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 60px 60px;
+    radial-gradient(circle, rgba(56, 184, 208, 0.07) 1px, transparent 1px);
+  background-size: 34px 34px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Depth glow — echoes logo's deep-teal-from-darkness gradient */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 112%, rgba(5, 115, 145, 0.62) 0%, rgba(3, 72, 112, 0.48) 26%, transparent 54%),
+    radial-gradient(ellipse at 14% 106%, rgba(4, 92, 125, 0.36) 0%, transparent 38%),
+    radial-gradient(ellipse at 86% 106%, rgba(6, 98, 130, 0.3) 0%, transparent 38%),
+    radial-gradient(ellipse at 80% 10%,  rgba(8, 85, 118, 0.28) 0%, transparent 42%),
+    radial-gradient(ellipse at 50% 50%,  rgba(2, 14, 44, 0.62) 0%, transparent 65%),
+    radial-gradient(ellipse at 50% 0%,   rgba(1, 8, 30, 0.45)  0%, transparent 44%);
   pointer-events: none;
 }

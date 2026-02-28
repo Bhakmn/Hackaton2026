@@ -1,6 +1,8 @@
 import type { Metadata } from 'next'
 import { Fraunces, DM_Sans } from 'next/font/google'
+import Image from 'next/image'
 import './globals.css'
+import Starfield from '../components/Starfield/Starfield'
 
 const fraunces = Fraunces({
   subsets: ['latin'],
@@ -18,7 +20,7 @@ const dmSans = DM_Sans({
 })
 
 export const metadata: Metadata = {
-  title: 'Web Studio',
+  title: 'Ditto',
   description: 'Build or improve your website.',
 }
 
@@ -29,7 +31,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className={`${fraunces.variable} ${dmSans.variable}`}>
-      <body>{children}</body>
+      <body>
+        <Starfield />
+        <Image src="/logo.png" alt="Ditto" width={430} height={240} className="site-logo" priority />
+        {children}
+      </body>
     </html>
   )
 }

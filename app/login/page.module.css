@@ -1,0 +1,123 @@
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  padding: 2.5rem;
+  box-shadow: 0 8px 48px rgba(0, 0, 0, 0.65),
+              inset 0 1px 0 rgba(56, 184, 208, 0.12),
+              0 0 60px rgba(8, 80, 160, 0.22);
+  text-align: center;
+}
+
+.eyebrow {
+  font-family: var(--font-dm-sans), sans-serif;
+  font-size: 0.7rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 1.2rem;
+}
+
+.heading {
+  font-family: var(--font-fraunces), serif;
+  font-weight: 300;
+  font-size: 1.8rem;
+  margin-bottom: 0.5rem;
+}
+
+.sub {
+  color: var(--muted);
+  font-size: 0.95rem;
+  margin-bottom: 2rem;
+  font-weight: 300;
+}
+
+.buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.socialBtn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  width: 100%;
+  padding: 0.85rem 1.2rem;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  font-family: var(--font-dm-sans), sans-serif;
+  font-size: 0.92rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.15s, border-color 0.2s, box-shadow 0.2s;
+  text-decoration: none;
+}
+
+.socialBtn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.socialBtn:active {
+  transform: translateY(0);
+}
+
+.socialBtn svg {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+/* Google */
+.google {
+  background: #ffffff;
+  color: #3c4043;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.google:hover {
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* GitHub */
+.github {
+  background: #24292e;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.github:hover {
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+/* Microsoft */
+.microsoft {
+  background: #2f2f2f;
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.microsoft:hover {
+  border-color: rgba(0, 120, 212, 0.5);
+}
+
+.divider {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin: 0.25rem 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.divider::before,
+.divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}

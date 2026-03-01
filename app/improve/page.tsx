@@ -13,10 +13,22 @@ interface Heading {
   level: number
 }
 
+interface SinglePageStats {
+  wordCount: number
+  imageCount: number
+  imagesWithoutAlt: number
+  internalLinks: number
+  externalLinks: number
+  hasViewport: boolean
+  hasOgImage: boolean
+}
+
 interface AnalysisData {
   title: string
   description: string
   headings: Heading[]
+  stats?: SinglePageStats
+  issues?: string[]
 }
 
 // Crawl data types
@@ -32,6 +44,12 @@ interface CrawlPage {
   title: string
   headings: PageHeading[]
   snippet: string
+  wordCount: number
+  imageCount: number
+  internalLinks: number
+  externalLinks: number
+  description: string
+  issues: string[]
 }
 
 interface CrawlSection {
@@ -40,11 +58,30 @@ interface CrawlSection {
   pages: CrawlPage[]
 }
 
+interface SiteStats {
+  totalPages: number
+  totalWords: number
+  avgWordsPerPage: number
+  totalImages: number
+  imagesWithoutAlt: number
+  totalIssues: number
+}
+
+interface SiteIssue {
+  severity: 'critical' | 'warning' | 'info'
+  message: string
+  page?: string
+}
+
 interface CrawlData {
   url: string
   totalPages: number
   sections: CrawlSection[]
+  stats?: SiteStats
+  issues?: SiteIssue[]
 }
+
+type SidebarTab = 'structure' | 'insights'
 
 export default function ImprovePage() {
   const [url, setUrl] = useState('')
@@ -57,11 +94,17 @@ export default function ImprovePage() {
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set())
   const [expandedPages, setExpandedPages] = useState<Set<string>>(new Set())
   const [previewUrl, setPreviewUrl] = useState('')
+  const [activeTab, setActiveTab] = useState<SidebarTab>('structure')
   const iframeRef = useRef<HTMLIFrameElement>(null)
   const workspaceRef = useRef<HTMLDivElement>(null)
 
   const isActive = url.trim().length > 3
   const hasResults = analysis || crawlData
+
+  // Find the currently selected crawl page
+  const selectedCrawlPage = crawlData
+    ? crawlData.sections.flatMap(s => s.pages).find(p => p.url === previewUrl)
+    : null
 
   useEffect(() => {
     if (hasResults && workspaceRef.current) {
@@ -70,6 +113,17 @@ export default function ImprovePage() {
       })
     }
   }, [hasResults])
+
+  // Listen for navigateTo messages from iframe (link clicks inside preview)
+  useEffect(() => {
+    function onMessage(e: MessageEvent) {
+      if (e.data?.type === 'navigateTo' && typeof e.data.url === 'string') {
+        setPreviewUrl(e.data.url)
+      }
+    }
+    window.addEventListener('message', onMessage)
+    return () => window.removeEventListener('message', onMessage)
+  }, [])
 
   // Move logo when analysis view is active
   useEffect(() => {
@@ -107,7 +161,6 @@ export default function ImprovePage() {
         setCrawlData(data)
         setAnalysedUrl(finalUrl)
         setPreviewUrl(finalUrl)
-        // Auto-expand first section
         if (data.sections.length > 0) {
           setExpandedSections(new Set([data.sections[0].name]))
         }
@@ -175,10 +228,218 @@ export default function ImprovePage() {
     setError('')
     setExpandedSections(new Set())
     setExpandedPages(new Set())
+    setActiveTab('structure')
   }
 
   function handlePreviewPage(pageUrl: string) {
     setPreviewUrl(pageUrl)
+  }
+
+  // ── Stats strip ──
+  function renderStatsStrip() {
+    if (crawlData?.stats) {
+      const s = crawlData.stats
+      return (
+        <div className={styles.statsStrip}>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{s.totalPages}</span>
+            <span className={styles.statLabel}>Pages</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{s.totalWords.toLocaleString()}</span>
+            <span className={styles.statLabel}>Words</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{s.avgWordsPerPage}</span>
+            <span className={styles.statLabel}>Avg Words/Page</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{s.totalImages}</span>
+            <span className={styles.statLabel}>Images</span>
+          </div>
+          <div className={`${styles.statCard} ${s.totalIssues > 0 ? styles.statWarning : ''}`}>
+            <span className={styles.statValue}>{s.totalIssues}</span>
+            <span className={styles.statLabel}>Issues</span>
+          </div>
+        </div>
+      )
+    }
+
+    if (analysis?.stats) {
+      const s = analysis.stats
+      return (
+        <div className={styles.statsStrip}>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{s.wordCount.toLocaleString()}</span>
+            <span className={styles.statLabel}>Words</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{s.imageCount}</span>
+            <span className={styles.statLabel}>Images</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{s.internalLinks}</span>
+            <span className={styles.statLabel}>Internal Links</span>
+          </div>
+          <div className={styles.statCard}>
+            <span className={styles.statValue}>{s.externalLinks}</span>
+            <span className={styles.statLabel}>External Links</span>
+          </div>
+          <div className={`${styles.statCard} ${(analysis.issues?.length || 0) > 0 ? styles.statWarning : ''}`}>
+            <span className={styles.statValue}>{analysis.issues?.length || 0}</span>
+            <span className={styles.statLabel}>Issues</span>
+          </div>
+        </div>
+      )
+    }
+
+    return null
+  }
+
+  // ── Render insights tab ──
+  function renderInsights() {
+    // Crawl mode: site-wide issues
+    if (crawlData?.issues && crawlData.issues.length > 0) {
+      const critical = crawlData.issues.filter(i => i.severity === 'critical')
+      const warnings = crawlData.issues.filter(i => i.severity === 'warning')
+      const info = crawlData.issues.filter(i => i.severity === 'info')
+
+      return (
+        <div className={styles.issueList}>
+          {critical.length > 0 && (
+            <div className={styles.issueGroup}>
+              <div className={styles.issueGroupHeader}>
+                <span className={`${styles.issueDot} ${styles.issueCritical}`} />
+                <span>Critical ({critical.length})</span>
+              </div>
+              {critical.map((issue, idx) => (
+                <div key={idx} className={styles.issueItem}>
+                  <span className={`${styles.issueSeverity} ${styles.issueCritical}`}>!</span>
+                  <div className={styles.issueContent}>
+                    <span className={styles.issueMessage}>{issue.message}</span>
+                    {issue.page && <span className={styles.issuePage}>{issue.page}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {warnings.length > 0 && (
+            <div className={styles.issueGroup}>
+              <div className={styles.issueGroupHeader}>
+                <span className={`${styles.issueDot} ${styles.issueWarning}`} />
+                <span>Warnings ({warnings.length})</span>
+              </div>
+              {warnings.map((issue, idx) => (
+                <div key={idx} className={styles.issueItem}>
+                  <span className={`${styles.issueSeverity} ${styles.issueWarning}`}>!</span>
+                  <div className={styles.issueContent}>
+                    <span className={styles.issueMessage}>{issue.message}</span>
+                    {issue.page && <span className={styles.issuePage}>{issue.page}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {info.length > 0 && (
+            <div className={styles.issueGroup}>
+              <div className={styles.issueGroupHeader}>
+                <span className={`${styles.issueDot} ${styles.issueInfo}`} />
+                <span>Info ({info.length})</span>
+              </div>
+              {info.map((issue, idx) => (
+                <div key={idx} className={styles.issueItem}>
+                  <span className={`${styles.issueSeverity} ${styles.issueInfo}`}>i</span>
+                  <div className={styles.issueContent}>
+                    <span className={styles.issueMessage}>{issue.message}</span>
+                    {issue.page && <span className={styles.issuePage}>{issue.page}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )
+    }
+
+    // Single-page mode: issues list
+    if (analysis?.issues && analysis.issues.length > 0) {
+      return (
+        <div className={styles.issueList}>
+          {analysis.issues.map((issue, idx) => (
+            <div key={idx} className={styles.issueItem}>
+              <span className={`${styles.issueSeverity} ${
+                issue.includes('No H1') || issue.includes('Missing meta')
+                  ? styles.issueCritical
+                  : styles.issueWarning
+              }`}>!</span>
+              <div className={styles.issueContent}>
+                <span className={styles.issueMessage}>{issue}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )
+    }
+
+    return (
+      <div className={styles.noIssues}>
+        <span className={styles.noIssuesIcon}>&#10003;</span>
+        <p>No issues found. Looking good!</p>
+      </div>
+    )
+  }
+
+  // ── Page detail bar (shown above iframe when a crawl page is selected) ──
+  function renderPageDetail() {
+    if (selectedCrawlPage) {
+      const p = selectedCrawlPage
+      return (
+        <div className={styles.pageDetail}>
+          <div className={styles.pageDetailInfo}>
+            <span className={styles.pageDetailTitle}>{p.title}</span>
+            {p.description && (
+              <span className={styles.pageDetailDesc}>{p.description.substring(0, 120)}</span>
+            )}
+          </div>
+          <div className={styles.pageDetailStats}>
+            <span className={styles.pageDetailStat}>{p.wordCount ?? 0} words</span>
+            <span className={styles.pageDetailStat}>{p.headings?.length ?? 0} headings</span>
+            <span className={styles.pageDetailStat}>{p.imageCount ?? 0} images</span>
+            <span className={styles.pageDetailStat}>{(p.internalLinks ?? 0) + (p.externalLinks ?? 0)} links</span>
+            {(p.issues?.length ?? 0) > 0 && (
+              <span className={`${styles.pageDetailStat} ${styles.pageDetailIssue}`}>
+                {p.issues!.length} issue{p.issues!.length !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+        </div>
+      )
+    }
+
+    // Single-page stats
+    if (analysis?.stats) {
+      const s = analysis.stats
+      return (
+        <div className={styles.pageDetail}>
+          <div className={styles.pageDetailInfo}>
+            <span className={styles.pageDetailTitle}>{analysis.title}</span>
+            {analysis.description && (
+              <span className={styles.pageDetailDesc}>{analysis.description.substring(0, 120)}</span>
+            )}
+          </div>
+          <div className={styles.pageDetailStats}>
+            <span className={styles.pageDetailStat}>{s.wordCount} words</span>
+            <span className={styles.pageDetailStat}>{s.imageCount} images</span>
+            <span className={styles.pageDetailStat}>{s.internalLinks} int. links</span>
+            <span className={styles.pageDetailStat}>{s.externalLinks} ext. links</span>
+            {s.hasViewport && <span className={`${styles.pageDetailStat} ${styles.pageDetailGood}`}>Viewport OK</span>}
+            {s.hasOgImage && <span className={`${styles.pageDetailStat} ${styles.pageDetailGood}`}>OG Image OK</span>}
+          </div>
+        </div>
+      )
+    }
+
+    return null
   }
 
   // ── Render crawl sidebar ──
@@ -204,18 +465,23 @@ export default function ImprovePage() {
               {section.pages.map(page => {
                 const pageKey = page.url
                 const isPageExpanded = expandedPages.has(pageKey)
-                const isActive = previewUrl === page.url
+                const isActivePage = previewUrl === page.url
 
                 return (
                   <div key={page.url} className={styles.pageItem}>
                     <button
-                      className={`${styles.pageHeader} ${isActive ? styles.pageActive : ''}`}
+                      className={`${styles.pageHeader} ${isActivePage ? styles.pageActive : ''}`}
                       onClick={() => {
                         handlePreviewPage(page.url)
                         if (page.headings.length > 0) togglePage(pageKey)
                       }}
                     >
-                      <span className={styles.pageTitle}>{page.title}</span>
+                      <span className={styles.pageTitle}>
+                        {page.title}
+                        {(page.issues?.length ?? 0) > 0 && (
+                          <span className={styles.pageIssueBadge}>{page.issues.length}</span>
+                        )}
+                      </span>
                       {page.headings.length > 0 && (
                         <span className={styles.pageCount}>
                           {page.headings.length}
@@ -355,7 +621,7 @@ export default function ImprovePage() {
           {error && <p className={styles.error}>{error}</p>}
 
           <SubmitButton
-            label={loading ? 'Analysing...' : 'Analyse my website →'}
+            label={loading ? 'Analysing...' : 'Analyse my website'}
             active={isActive && !loading}
             onClick={handleAnalyse}
           />
@@ -370,11 +636,13 @@ export default function ImprovePage() {
     ? `${crawlData.totalPages} pages`
     : `${analysis?.headings.length || 0} headings`
 
+  const issueCount = crawlData?.stats?.totalIssues ?? analysis?.issues?.length ?? 0
+
   return (
     <div ref={workspaceRef} className={styles.workspace}>
       {/* Top title bar */}
       <div className={styles.titleBar}>
-        <button className={styles.navBack} onClick={handleBack}>← Back</button>
+        <button className={styles.navBack} onClick={handleBack}>&#8592; Back</button>
         <div className={styles.titleInfo}>
           {title && <h1 className={styles.titleText}>{title}</h1>}
           <span className={styles.pageUrl}>{analysedUrl}</span>
@@ -383,37 +651,64 @@ export default function ImprovePage() {
           className={styles.navToggle}
           onClick={() => setSidebarOpen(!sidebarOpen)}
         >
-          {sidebarOpen ? '◧' : '☰'}
+          {sidebarOpen ? '\u25E7' : '\u2630'}
         </button>
       </div>
+
+      {/* Stats strip */}
+      {renderStatsStrip()}
 
       <div className={styles.analysisBody}>
         {/* Left sidebar */}
         {sidebarOpen && (
           <div className={styles.sidebar}>
-            <div className={styles.sidebarHeader}>
-              <span className={styles.sidebarTitle}>
-                {crawlData ? 'Site Structure' : 'Page Structure'}
-              </span>
-              <span className={styles.sidebarCount}>{totalCount}</span>
+            {/* Tab bar */}
+            <div className={styles.tabBar}>
+              <button
+                className={`${styles.tab} ${activeTab === 'structure' ? styles.tabActive : ''}`}
+                onClick={() => setActiveTab('structure')}
+              >
+                Structure
+                <span className={styles.tabCount}>{totalCount}</span>
+              </button>
+              <button
+                className={`${styles.tab} ${activeTab === 'insights' ? styles.tabActive : ''}`}
+                onClick={() => setActiveTab('insights')}
+              >
+                Insights
+                {issueCount > 0 && (
+                  <span className={`${styles.tabCount} ${styles.tabCountWarning}`}>{issueCount}</span>
+                )}
+              </button>
             </div>
 
-            {!crawlData && analysis?.description && (
-              <p className={styles.sidebarDesc}>{analysis.description}</p>
+            {activeTab === 'structure' && (
+              <>
+                {!crawlData && analysis?.description && (
+                  <p className={styles.sidebarDesc}>{analysis.description}</p>
+                )}
+
+                <div className={styles.headingTree}>
+                  {crawlData ? renderCrawlTree() : (
+                    analysis && analysis.headings.length > 0
+                      ? renderHeadingTree()
+                      : <p className={styles.noHeadings}>No headings found.</p>
+                  )}
+                </div>
+              </>
             )}
 
-            <div className={styles.headingTree}>
-              {crawlData ? renderCrawlTree() : (
-                analysis && analysis.headings.length > 0
-                  ? renderHeadingTree()
-                  : <p className={styles.noHeadings}>No headings found.</p>
-              )}
-            </div>
+            {activeTab === 'insights' && (
+              <div className={styles.headingTree}>
+                {renderInsights()}
+              </div>
+            )}
           </div>
         )}
 
-        {/* Right panel: iframe preview */}
+        {/* Right panel: page detail + iframe preview */}
         <div className={styles.previewPanel}>
+          {renderPageDetail()}
           <div className={styles.iframeWrap}>
             <iframe
               ref={iframeRef}

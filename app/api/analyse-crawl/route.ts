@@ -2,17 +2,27 @@ import { NextRequest, NextResponse } from 'next/server'
 import { readFileSync, readdirSync } from 'fs'
 import { join } from 'path'
 
-interface CrawlPage {
+interface CrawlPageRaw {
   url: string
   markdown: string
   depth: number
+  title?: string
+  description?: string
+  summary?: string
+  word_count?: number
+  heading_count?: number
+  internal_link_count?: number
+  external_link_count?: number
+  image_count?: number
+  images?: { src: string; alt: string }[]
+  headings?: { level: number; text: string }[]
 }
 
 interface CrawlData {
   success: boolean
   total_pages: number
   url_crawled: string
-  pages: CrawlPage[]
+  pages: CrawlPageRaw[]
 }
 
 interface PageHeading {
@@ -27,6 +37,29 @@ interface ParsedPage {
   title: string
   headings: PageHeading[]
   snippet: string
+  wordCount: number
+  imageCount: number
+  internalLinks: number
+  externalLinks: number
+  description: string
+  issues: string[]
+}
+
+interface SiteIssue {
+  severity: 'critical' | 'warning' | 'info'
+  message: string
+  page?: string
+}
+
+function computePageIssues(page: CrawlPageRaw, headings: PageHeading[]): string[] {
+  const issues: string[] = []
+  const hasH1 = headings.some(h => h.level === 1)
+  if (!hasH1) issues.push('No H1 heading')
+  if (!page.description) issues.push('Missing meta description')
+  if ((page.word_count || 0) < 100) issues.push('Low word count')
+  const missingAlt = (page.images || []).filter(img => !img.alt || img.alt.trim() === '').length
+  if (missingAlt > 0) issues.push(`${missingAlt} images missing alt text`)
+  return issues
 }
 
 interface Section {
@@ -107,21 +140,50 @@ export async function POST(request: NextRequest) {
     // Group pages by first URL path segment
     const sectionMap = new Map<string, ParsedPage[]>()
 
+    let totalWords = 0
+    let totalImages = 0
+    let imagesWithoutAlt = 0
+    let totalIssues = 0
+    const siteIssues: SiteIssue[] = []
+
     for (const page of contentPages) {
       const parsedUrl = new URL(page.url)
       const pathParts = parsedUrl.pathname.split('/').filter(Boolean)
       const sectionKey = pathParts[0] || 'home'
 
+      const headings = extractHeadings(page.markdown)
+      const pageIssues = computePageIssues(page, headings)
+      const pageTitle = page.title || extractTitle(page.markdown, page.url)
+
       const parsed: ParsedPage = {
         url: page.url,
         path: parsedUrl.pathname,
-        title: extractTitle(page.markdown, page.url),
-        headings: extractHeadings(page.markdown),
+        title: pageTitle,
+        headings,
         snippet: extractSnippet(page.markdown),
+        wordCount: page.word_count || 0,
+        imageCount: page.image_count || 0,
+        internalLinks: page.internal_link_count || 0,
+        externalLinks: page.external_link_count || 0,
+        description: page.description || '',
+        issues: pageIssues,
+      }
+
+      totalWords += parsed.wordCount
+      totalImages += parsed.imageCount
+      const pageMissingAlt = (page.images || []).filter(img => !img.alt || img.alt.trim() === '').length
+      imagesWithoutAlt += pageMissingAlt
+      totalIssues += pageIssues.length
+
+      // Collect site-wide issues
+      for (const issue of pageIssues) {
+        const severity = (issue === 'No H1 heading' || issue === 'Missing meta description')
+          ? 'critical' as const
+          : issue.includes('alt text') ? 'warning' as const : 'warning' as const
+        siteIssues.push({ severity, message: issue, page: pageTitle })
       }
 
       const existing = sectionMap.get(sectionKey) || []
-      // Avoid duplicate URLs
       if (!existing.some(p => p.url === parsed.url)) {
         existing.push(parsed)
         sectionMap.set(sectionKey, existing)
@@ -141,6 +203,15 @@ export async function POST(request: NextRequest) {
       url: data.url_crawled,
       totalPages: contentPages.length,
       sections,
+      stats: {
+        totalPages: contentPages.length,
+        totalWords,
+        avgWordsPerPage: contentPages.length > 0 ? Math.round(totalWords / contentPages.length) : 0,
+        totalImages,
+        imagesWithoutAlt,
+        totalIssues,
+      },
+      issues: siteIssues,
     })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to parse crawl data'

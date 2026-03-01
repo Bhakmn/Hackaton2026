@@ -22,7 +22,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  overflow-x: hidden;
 }
 
 /* Fixed corner logo */
@@ -34,6 +34,7 @@ body {
   width: auto;
   z-index: 2;
   filter: drop-shadow(0 0 20px rgba(56, 184, 208, 0.45));
+  pointer-events: none;
 }
 
 /* Falling stars */

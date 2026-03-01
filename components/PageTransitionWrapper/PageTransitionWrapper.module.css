@@ -10,7 +10,7 @@
 
 .wrapper.visible {
   opacity: 1;
-  transform: translateY(0);
+  transform: none;
 }
 
 .wide   { max-width: 900px; }

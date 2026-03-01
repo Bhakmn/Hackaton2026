@@ -41,7 +41,6 @@ export async function POST(request: NextRequest) {
 
     while ((match = headingRegex.exec(html)) !== null) {
       const tag = match[1].toLowerCase()
-      // Strip HTML tags from heading text
       const text = match[2].replace(/<[^>]*>/g, '').trim().replace(/\s+/g, ' ')
       if (text) {
         headings.push({
@@ -54,7 +53,69 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    return NextResponse.json({ title, description, headings })
+    // Count images and check alt attributes
+    const imgRegex = /<img\b([^>]*)>/gi
+    let totalImages = 0
+    let imagesWithoutAlt = 0
+    let imgMatch
+    while ((imgMatch = imgRegex.exec(html)) !== null) {
+      totalImages++
+      const attrs = imgMatch[1]
+      const altMatch = attrs.match(/alt\s*=\s*["']([^"']*)["']/i)
+      if (!altMatch || altMatch[1].trim() === '') imagesWithoutAlt++
+    }
+
+    // Count links
+    const linkRegex = /<a\b[^>]*href\s*=\s*["']([^"']*)["'][^>]*>/gi
+    const parsedOrigin = new URL(url).origin
+    let internalLinks = 0
+    let externalLinks = 0
+    let linkMatch
+    while ((linkMatch = linkRegex.exec(html)) !== null) {
+      const href = linkMatch[1]
+      if (href.startsWith('#') || href.startsWith('javascript:')) continue
+      if (href.startsWith('/') || href.startsWith(parsedOrigin)) {
+        internalLinks++
+      } else if (href.startsWith('http')) {
+        externalLinks++
+      }
+    }
+
+    // Check for viewport meta tag
+    const hasViewport = /<meta\s[^>]*name\s*=\s*["']viewport["'][^>]*>/i.test(html)
+
+    // Check for og:image
+    const hasOgImage = /<meta\s[^>]*property\s*=\s*["']og:image["'][^>]*>/i.test(html)
+
+    // Compute word count (rough)
+    const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i)
+    const bodyText = bodyMatch ? bodyMatch[1].replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim() : ''
+    const wordCount = bodyText ? bodyText.split(/\s+/).length : 0
+
+    // Generate issues
+    const issues: string[] = []
+    if (!headings.some(h => h.level === 1)) issues.push('No H1 heading')
+    if (!description) issues.push('Missing meta description')
+    if (!hasViewport) issues.push('Missing viewport meta tag')
+    if (!hasOgImage) issues.push('No og:image meta tag')
+    if (imagesWithoutAlt > 0) issues.push(`${imagesWithoutAlt} images missing alt text`)
+    if (wordCount < 100) issues.push('Low word count')
+
+    return NextResponse.json({
+      title,
+      description,
+      headings,
+      stats: {
+        wordCount,
+        imageCount: totalImages,
+        imagesWithoutAlt,
+        internalLinks,
+        externalLinks,
+        hasViewport,
+        hasOgImage,
+      },
+      issues,
+    })
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to analyse'
     return NextResponse.json({ error: message }, { status: 502 })

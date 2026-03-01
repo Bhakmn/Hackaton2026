@@ -3,7 +3,10 @@
     "allow": [
       "Bash(node --version)",
       "Bash(echo $PATH)",
-      "Bash(claude --version)"
+      "Bash(claude --version)",
+      "Bash(git -C /Users/eraybaba/Desktop/Hackaton2026 log --oneline -10)",
+      "Bash(git -C /Users/eraybaba/Desktop/Hackaton2026 show --stat HEAD)",
+      "Bash(npx next build)"
     ]
   }
 }

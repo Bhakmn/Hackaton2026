@@ -6,7 +6,8 @@
       "Bash(claude --version)",
       "Bash(git -C /Users/eraybaba/Desktop/Hackaton2026 log --oneline -10)",
       "Bash(git -C /Users/eraybaba/Desktop/Hackaton2026 show --stat HEAD)",
-      "Bash(npx next build)"
+      "Bash(npx next build)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

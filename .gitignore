@@ -35,3 +35,4 @@ Thumbs.db
 
 # temporary website build sessions
 /temp/ditto-build-*/
+/sessions/

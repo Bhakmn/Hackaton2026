@@ -6,7 +6,7 @@ import BackButton from '@/components/BackButton/BackButton'
 
 interface ChatMessage {
   id: number
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'system'
   text: string
 }
 
@@ -14,60 +14,174 @@ export default function BuildPage() {
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 0,
-      role: 'assistant',
-      text: 'Welcome to Ditto! Describe the website you want to build, and I\'ll help you create it. You can also enter a URL on the right to preview any site.',
+      role: 'system',
+      text: 'Welcome to Ditto! Describe the website you want to build and I\'ll make it happen.',
     },
   ])
   const [input, setInput] = useState('')
   const [url, setUrl] = useState('')
-  const [loadedUrl, setLoadedUrl] = useState('')
+  const [iframeUrl, setIframeUrl] = useState('')
+  const [isBuilding, setIsBuilding] = useState(false)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const wrapperRef = useRef<HTMLDivElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
+  const claudeOutputRef = useRef('')
+  const iframeRef = useRef<HTMLIFrameElement>(null)
 
+  // Fade-in on mount
   useEffect(() => {
     const el = wrapperRef.current
     if (!el) return
-    requestAnimationFrame(() => {
-      el.classList.add(styles.visible)
-    })
+    requestAnimationFrame(() => el.classList.add(styles.visible))
   }, [])
 
+  // Auto-scroll chat
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // Cleanup on unmount – kill session
+  useEffect(() => {
+    return () => {
+      abortRef.current?.abort()
+      fetch('/api/build', { method: 'DELETE' }).catch(() => {})
+    }
+  }, [])
+
+  function addMessage(role: ChatMessage['role'], text: string): number {
+    const id = Date.now() + Math.random()
+    setMessages(prev => [...prev, { id, role, text }])
+    return id
+  }
+
+  // ── SSE build stream ──
+  async function startBuild(prompt: string) {
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    try {
+      const res = await fetch('/api/build', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, sessionId }),
+        signal: controller.signal,
+      })
+
+      if (!res.ok || !res.body) {
+        addMessage('system', `Server error: ${res.status}`)
+        setIsBuilding(false)
+        return
+      }
+
+      const reader = res.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let claudeMsgId: number | null = null
+      claudeOutputRef.current = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const parts = buffer.split('\n\n')
+        buffer = parts.pop() || ''
+
+        for (const part of parts) {
+          for (const line of part.split('\n')) {
+            if (!line.startsWith('data: ')) continue
+
+            try {
+              const data = JSON.parse(line.slice(6))
+
+              switch (data.type) {
+                case 'status':
+                  addMessage('system', data.message)
+                  break
+
+                case 'session':
+                  setSessionId(data.sessionId)
+                  break
+
+                case 'dev-ready':
+                  setIframeUrl(data.url)
+                  setUrl(data.url)
+                  break
+
+                case 'claude-output': {
+                  if (!claudeMsgId) {
+                    claudeMsgId = Date.now() + Math.random()
+                    claudeOutputRef.current = data.output
+                    setMessages(prev => [
+                      ...prev,
+                      { id: claudeMsgId!, role: 'assistant', text: data.output },
+                    ])
+                  } else {
+                    claudeOutputRef.current += data.output
+                    const id = claudeMsgId
+                    setMessages(prev =>
+                      prev.map(m => (m.id === id ? { ...m, text: claudeOutputRef.current } : m))
+                    )
+                  }
+                  break
+                }
+
+                case 'claude-done':
+                  addMessage('system', data.message)
+                  claudeMsgId = null
+                  setIsBuilding(false)
+                  break
+
+                case 'error':
+                  addMessage('system', `Error: ${data.message}`)
+                  setIsBuilding(false)
+                  break
+
+                case 'done':
+                  setIsBuilding(false)
+                  break
+              }
+            } catch {
+              // skip malformed JSON
+            }
+          }
+        }
+      }
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name !== 'AbortError') {
+        addMessage('system', `Connection lost: ${err.message}`)
+      }
+    } finally {
+      setIsBuilding(false)
+    }
+  }
+
   function handleSend(e: FormEvent) {
     e.preventDefault()
     const trimmed = input.trim()
-    if (!trimmed) return
+    if (!trimmed || isBuilding) return
 
-    const userMsg: ChatMessage = {
-      id: Date.now(),
-      role: 'user',
-      text: trimmed,
-    }
-    setMessages(prev => [...prev, userMsg])
+    addMessage('user', trimmed)
     setInput('')
-
-    // Simulated assistant response for now
-    setTimeout(() => {
-      const assistantMsg: ChatMessage = {
-        id: Date.now() + 1,
-        role: 'assistant',
-        text: `Got it! I'll work on that. Here's what I understand:\n\n"${trimmed}"\n\nThis feature will be connected to the build engine soon.`,
-      }
-      setMessages(prev => [...prev, assistantMsg])
-    }, 800)
+    setIsBuilding(true)
+    startBuild(trimmed)
   }
 
   function handleLoadUrl(e: FormEvent) {
     e.preventDefault()
     let finalUrl = url.trim()
     if (!finalUrl) return
-    if (!/^https?:\/\//i.test(finalUrl)) {
-      finalUrl = 'https://' + finalUrl
+    if (!/^https?:\/\//i.test(finalUrl)) finalUrl = 'https://' + finalUrl
+    setIframeUrl(finalUrl)
+  }
+
+  function refreshPreview() {
+    if (iframeRef.current && iframeUrl) {
+      iframeRef.current.src = iframeUrl
     }
-    setLoadedUrl(finalUrl)
   }
 
   return (
@@ -84,21 +198,39 @@ export default function BuildPage() {
             <div
               key={msg.id}
               className={`${styles.message} ${
-                msg.role === 'user' ? styles.userMsg : styles.assistantMsg
+                msg.role === 'user'
+                  ? styles.userMsg
+                  : msg.role === 'system'
+                    ? styles.systemMsg
+                    : styles.assistantMsg
               }`}
             >
-              <div className={styles.msgBubble}>
-                {msg.text}
-              </div>
+              {msg.role === 'system' ? (
+                <div className={styles.systemBubble}>{msg.text}</div>
+              ) : (
+                <div className={styles.msgBubble}>{msg.text}</div>
+              )}
             </div>
           ))}
+
+          {isBuilding && (
+            <div className={`${styles.message} ${styles.systemMsg}`}>
+              <div className={styles.systemBubble}>
+                <span className={styles.buildingDots}>
+                  <span>●</span>
+                  <span>●</span>
+                  <span>●</span>
+                </span>
+              </div>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
 
         <form className={styles.chatInputArea} onSubmit={handleSend}>
           <textarea
             className={styles.chatInput}
-            placeholder="Describe what you want to build..."
+            placeholder={isBuilding ? 'Building in progress...' : 'Describe what you want to build...'}
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={e => {
@@ -108,11 +240,12 @@ export default function BuildPage() {
               }
             }}
             rows={1}
+            disabled={isBuilding}
           />
           <button
             type="submit"
             className={styles.sendBtn}
-            disabled={!input.trim()}
+            disabled={!input.trim() || isBuilding}
           >
             ↑
           </button>
@@ -121,40 +254,47 @@ export default function BuildPage() {
 
       {/* ── Right: Preview Panel ── */}
       <div className={styles.previewPanel}>
-        <form className={styles.urlBar} onSubmit={handleLoadUrl}>
-          <div className={styles.urlInputWrap}>
-            <span className={styles.urlIcon}>⌐</span>
-            <input
-              type="text"
-              className={styles.urlInput}
-              placeholder="Enter a URL to preview (e.g. google.com)"
-              value={url}
-              onChange={e => setUrl(e.target.value)}
-            />
-          </div>
-          <button
-            type="submit"
-            className={styles.goBtn}
-            disabled={!url.trim()}
-          >
-            Go
-          </button>
-        </form>
+        <div className={styles.urlBar}>
+          <form className={styles.urlForm} onSubmit={handleLoadUrl}>
+            <div className={styles.urlInputWrap}>
+              <span className={styles.urlIcon}>⌐</span>
+              <input
+                type="text"
+                className={styles.urlInput}
+                placeholder="URL appears when dev server starts..."
+                value={url}
+                onChange={e => setUrl(e.target.value)}
+              />
+            </div>
+            <button type="submit" className={styles.goBtn} disabled={!url.trim()}>
+              Go
+            </button>
+          </form>
+          {iframeUrl && (
+            <button type="button" className={styles.refreshBtn} onClick={refreshPreview}>
+              ↻
+            </button>
+          )}
+        </div>
 
         <div className={styles.iframeWrap}>
-          {loadedUrl ? (
+          {iframeUrl ? (
             <iframe
-              src={loadedUrl}
+              ref={iframeRef}
+              src={iframeUrl}
               className={styles.iframe}
               title="Website preview"
-              sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
             />
           ) : (
             <div className={styles.emptyPreview}>
               <div className={styles.emptyIcon}>◎</div>
-              <p className={styles.emptyText}>Enter a URL above to preview a website</p>
+              <p className={styles.emptyText}>
+                {isBuilding
+                  ? 'Setting up your project...'
+                  : 'Send a message to start building your website'}
+              </p>
               <p className={styles.emptyHint}>
-                Soon this will render your site live as we build it
+                Your site will appear here once the dev server starts
               </p>
             </div>
           )}

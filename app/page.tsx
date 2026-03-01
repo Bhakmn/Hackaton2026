@@ -1,3 +1,4 @@
+import Image from 'next/image'
 import styles from './page.module.css'
 import PageTransitionWrapper from '@/components/PageTransitionWrapper/PageTransitionWrapper'
 import OptionCard from '@/components/OptionCard/OptionCard'
@@ -5,6 +6,7 @@ import OptionCard from '@/components/OptionCard/OptionCard'
 export default function HomePage() {
   return (
     <PageTransitionWrapper maxWidth="wide">
+      <Image src="/logo.png" alt="Ditto" width={430} height={240} className="site-logo" priority />
       <h1 className={styles.heading}>
         What would you like<br />to <em>build</em> today?
       </h1>
